@@ -37,12 +37,14 @@ Source::~Source() { }
 Sink::~Sink() { }
 
 char* Sink::GetAppendBuffer(size_t length, char* scratch) {
+  (void)length;  // Avoid unused parameter warning.
   return scratch;
 }
 
 char* Sink::GetAppendBufferVariable(
       size_t min_size, size_t desired_size_hint, char* scratch,
       size_t scratch_size, size_t* allocated_size) {
+  (void)min_size; (void)desired_size_hint;  // Avoid unused parameter warnings.
   *allocated_size = scratch_size;
   return scratch;
 }
@@ -80,6 +82,7 @@ void UncheckedByteArraySink::Append(const char* data, size_t n) {
 }
 
 char* UncheckedByteArraySink::GetAppendBuffer(size_t len, char* scratch) {
+  (void)len; (void)scratch;  // Avoid unused parameter warnings.
   return dest_;
 }
 
@@ -97,6 +100,8 @@ void UncheckedByteArraySink::AppendAndTakeOwnership(
 char* UncheckedByteArraySink::GetAppendBufferVariable(
       size_t min_size, size_t desired_size_hint, char* scratch,
       size_t scratch_size, size_t* allocated_size) {
+  // Avoid unused parameter warnings.
+  (void)min_size; (void)scratch; (void)scratch_size;
   *allocated_size = desired_size_hint;
   return dest_;
 }

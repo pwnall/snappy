@@ -541,7 +541,10 @@ char* CompressFragment(const char* input,
 
 // Called back at avery compression call to trace parameters and sizes.
 static inline void Report(const char *algorithm, size_t compressed_size,
-                          size_t uncompressed_size) {}
+                          size_t uncompressed_size) {
+  // Avoid unused parameter warning.
+  (void)algorithm; (void)compressed_size; (void)uncompressed_size;
+}
 
 // Signature of output types needed by decompression code.
 // The decompression code is templatized on a type that obeys this
@@ -1226,10 +1229,12 @@ class SnappyDecompressionValidator {
     return expected_ == produced_;
   }
   inline bool Append(const char* ip, size_t len) {
+    (void)ip;  // Avoid unused parameter warning.
     produced_ += len;
     return produced_ <= expected_;
   }
   inline bool TryFastAppend(const char* ip, size_t available, size_t length) {
+    (void)ip; (void)available; (void)length;  // Avoid unused parameter warning.
     return false;
   }
   inline bool AppendFromSelf(size_t offset, size_t len) {
@@ -1361,8 +1366,9 @@ class SnappyScatteredWriter {
     char* const op_end = op_ptr_ + len;
     // See SnappyArrayWriter::AppendFromSelf for an explanation of
     // the "offset - 1u" trick.
-    if (SNAPPY_PREDICT_TRUE(offset - 1u < op_ptr_ - op_base_ &&
-                          op_end <= op_limit_)) {
+    if (SNAPPY_PREDICT_TRUE(
+        offset - 1u < static_cast<size_t>(op_ptr_ - op_base_)
+        && op_end <= op_limit_)) {
       // Fast path: src and dst in current block.
       op_ptr_ = IncrementalCopy(op_ptr_ - offset, op_ptr_, op_end, op_limit_);
       return true;
@@ -1449,7 +1455,7 @@ class SnappySinkAllocator {
   void Flush(size_t size) {
     size_t size_written = 0;
     size_t block_size;
-    for (int i = 0; i < blocks_.size(); ++i) {
+    for (size_t i = 0; i < blocks_.size(); ++i) {
       block_size = std::min<size_t>(blocks_[i].size, size - size_written);
       dest_->AppendAndTakeOwnership(blocks_[i].data, block_size,
                                     &SnappySinkAllocator::Deleter, NULL);
@@ -1466,6 +1472,7 @@ class SnappySinkAllocator {
   };
 
   static void Deleter(void* arg, const char* bytes, size_t size) {
+    (void)arg; (void)size;  // Avoid unused parameter warning.
     delete[] bytes;
   }
 

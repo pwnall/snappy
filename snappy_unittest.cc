@@ -359,7 +359,7 @@ static void Measure(const char* data,
          urate.c_str());
 }
 
-static int VerifyString(const string& input) {
+static size_t VerifyString(const string& input) {
   string compressed;
   DataEndingAtUnreadablePage i(input);
   const size_t written = snappy::Compress(i.data(), i.size(), &compressed);
@@ -411,7 +411,7 @@ static void VerifyIOVec(const string& input) {
     num = input.size();
   }
   struct iovec* iov = new iovec[num];
-  int used_so_far = 0;
+  size_t used_so_far = 0;
   for (size_t i = 0; i < num; ++i) {
     iov[i].iov_base = buf + used_so_far;
     if (i == num - 1) {
@@ -473,11 +473,11 @@ static void VerifyNonBlockedCompression(const string& input) {
 
   // Uncompress into iovec
   {
-    static const int kNumBlocks = 10;
+    static const size_t kNumBlocks = 10;
     struct iovec vec[kNumBlocks];
-    const int block_size = 1 + input.size() / kNumBlocks;
+    const size_t block_size = 1 + input.size() / kNumBlocks;
     string iovec_data(block_size * kNumBlocks, 'x');
-    for (int i = 0; i < kNumBlocks; i++) {
+    for (size_t i = 0; i < kNumBlocks; i++) {
       vec[i].iov_base = string_as_array(&iovec_data) + i * block_size;
       vec[i].iov_len = block_size;
     }
@@ -489,7 +489,7 @@ static void VerifyNonBlockedCompression(const string& input) {
 
 // Expand the input so that it is at least K times as big as block size
 static string Expand(const string& input) {
-  static const int K = 3;
+  static const size_t K = 3;
   string data = input;
   while (data.size() < K * snappy::kBlockSize) {
     data += input;
@@ -501,7 +501,7 @@ static int Verify(const string& input) {
   VLOG(1) << "Verifying input of size " << input.size();
 
   // Compress using string based routines
-  const int result = VerifyString(input);
+  const size_t result = VerifyString(input);
 
   // Verify using sink based routines
   VerifyStringSink(input);
@@ -717,16 +717,16 @@ TEST(Snappy, FourByteOffset) {
   string fragment2 = "some other string";
 
   // How many times each fragment is emitted.
-  const int n1 = 2;
-  const int n2 = 100000 / fragment2.size();
-  const int length = n1 * fragment1.size() + n2 * fragment2.size();
+  const size_t n1 = 2;
+  const size_t n2 = 100000 / fragment2.size();
+  const size_t length = n1 * fragment1.size() + n2 * fragment2.size();
 
   string compressed;
   Varint::Append32(&compressed, length);
 
   AppendLiteral(&compressed, fragment1);
   string src = fragment1;
-  for (int i = 0; i < n2; i++) {
+  for (size_t i = 0; i < n2; i++) {
     AppendLiteral(&compressed, fragment2);
     src += fragment2;
   }
@@ -748,10 +748,10 @@ TEST(Snappy, IOVecEdgeCases) {
   // Our output blocks look like this initially (the last iovec is bigger
   // than depicted):
   // [  ] [ ] [    ] [        ] [        ]
-  static const int kLengths[] = { 2, 1, 4, 8, 128 };
+  static const size_t kLengths[] = { 2, 1, 4, 8, 128 };
 
   struct iovec iov[ARRAYSIZE(kLengths)];
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     iov[i].iov_base = new char[kLengths[i]];
     iov[i].iov_len = kLengths[i];
   }
@@ -803,16 +803,16 @@ TEST(Snappy, IOVecEdgeCases) {
   CHECK_EQ(0, memcmp(iov[3].iov_base, "23123123", 8));
   CHECK_EQ(0, memcmp(iov[4].iov_base, "123bc12", 7));
 
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     delete[] reinterpret_cast<char *>(iov[i].iov_base);
   }
 }
 
 TEST(Snappy, IOVecLiteralOverflow) {
-  static const int kLengths[] = { 3, 4 };
+  static const size_t kLengths[] = { 3, 4 };
 
   struct iovec iov[ARRAYSIZE(kLengths)];
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     iov[i].iov_base = new char[kLengths[i]];
     iov[i].iov_len = kLengths[i];
   }
@@ -825,16 +825,16 @@ TEST(Snappy, IOVecLiteralOverflow) {
   CHECK(!snappy::RawUncompressToIOVec(
       compressed.data(), compressed.size(), iov, ARRAYSIZE(iov)));
 
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     delete[] reinterpret_cast<char *>(iov[i].iov_base);
   }
 }
 
 TEST(Snappy, IOVecCopyOverflow) {
-  static const int kLengths[] = { 3, 4 };
+  static const size_t kLengths[] = { 3, 4 };
 
   struct iovec iov[ARRAYSIZE(kLengths)];
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     iov[i].iov_base = new char[kLengths[i]];
     iov[i].iov_len = kLengths[i];
   }
@@ -848,7 +848,7 @@ TEST(Snappy, IOVecCopyOverflow) {
   CHECK(!snappy::RawUncompressToIOVec(
       compressed.data(), compressed.size(), iov, ARRAYSIZE(iov)));
 
-  for (int i = 0; i < ARRAYSIZE(kLengths); ++i) {
+  for (size_t i = 0; i < ARRAYSIZE(kLengths); ++i) {
     delete[] reinterpret_cast<char *>(iov[i].iov_base);
   }
 }
@@ -937,7 +937,7 @@ TEST(Snappy, ZeroOffsetCopyValidation) {
 
 namespace {
 
-int TestFindMatchLength(const char* s1, const char *s2, unsigned length) {
+size_t TestFindMatchLength(const char* s1, const char *s2, unsigned length) {
   std::pair<size_t, bool> p =
       snappy::internal::FindMatchLength(s1, s2, s2 + length);
   CHECK_EQ(p.first < 8, p.second);
@@ -1051,12 +1051,12 @@ TEST(Snappy, FindMatchLengthRandom) {
     }
     DataEndingAtUnreadablePage u(s);
     DataEndingAtUnreadablePage v(t);
-    int matched = TestFindMatchLength(u.data(), v.data(), t.size());
+    size_t matched = TestFindMatchLength(u.data(), v.data(), t.size());
     if (matched == t.size()) {
       EXPECT_EQ(s, t);
     } else {
       EXPECT_NE(s[matched], t[matched]);
-      for (int j = 0; j < matched; j++) {
+      for (size_t j = 0; j < matched; j++) {
         EXPECT_EQ(s[j], t[j]);
       }
     }
@@ -1187,12 +1187,12 @@ static void MeasureFile(const char* fname) {
   CHECK_OK(file::GetContents(fname, &fullinput, file::Defaults()));
   printf("%-40s :\n", fname);
 
-  int start_len = (FLAGS_start_len < 0) ? fullinput.size() : FLAGS_start_len;
-  int end_len = fullinput.size();
+  size_t start_len = (FLAGS_start_len < 0) ? fullinput.size() : FLAGS_start_len;
+  size_t end_len = fullinput.size();
   if (FLAGS_end_len >= 0) {
-    end_len = std::min<int>(fullinput.size(), FLAGS_end_len);
+    end_len = std::min<size_t>(fullinput.size(), FLAGS_end_len);
   }
-  for (int len = start_len; len <= end_len; len++) {
+  for (size_t len = start_len; len <= end_len; len++) {
     const char* const input = fullinput.data();
     int repeats = (FLAGS_bytes + len) / (len + 1);
     if (FLAGS_zlib)     Measure(input, len, ZLIB, repeats, 1024<<10);
@@ -1235,7 +1235,7 @@ static void BM_UFlat(int iters, int arg) {
 
   // Pick file to process based on "arg"
   CHECK_GE(arg, 0);
-  CHECK_LT(arg, ARRAYSIZE(files));
+  CHECK_LT(static_cast<size_t>(arg), ARRAYSIZE(files));
   string contents = ReadTestDataFile(files[arg].filename,
                                      files[arg].size_limit);
 
@@ -1261,7 +1261,7 @@ static void BM_UValidate(int iters, int arg) {
 
   // Pick file to process based on "arg"
   CHECK_GE(arg, 0);
-  CHECK_LT(arg, ARRAYSIZE(files));
+  CHECK_LT(static_cast<size_t>(arg), ARRAYSIZE(files));
   string contents = ReadTestDataFile(files[arg].filename,
                                      files[arg].size_limit);
 
@@ -1284,7 +1284,7 @@ static void BM_UIOVec(int iters, int arg) {
 
   // Pick file to process based on "arg"
   CHECK_GE(arg, 0);
-  CHECK_LT(arg, ARRAYSIZE(files));
+  CHECK_LT(static_cast<size_t>(arg), ARRAYSIZE(files));
   string contents = ReadTestDataFile(files[arg].filename,
                                      files[arg].size_limit);
 
@@ -1292,11 +1292,11 @@ static void BM_UIOVec(int iters, int arg) {
   snappy::Compress(contents.data(), contents.size(), &zcontents);
 
   // Uncompress into an iovec containing ten entries.
-  const int kNumEntries = 10;
+  const size_t kNumEntries = 10;
   struct iovec iov[kNumEntries];
   char *dst = new char[contents.size()];
-  int used_so_far = 0;
-  for (int i = 0; i < kNumEntries; ++i) {
+  size_t used_so_far = 0;
+  for (size_t i = 0; i < kNumEntries; ++i) {
     iov[i].iov_base = dst + used_so_far;
     if (used_so_far == contents.size()) {
       iov[i].iov_len = 0;
@@ -1330,7 +1330,7 @@ static void BM_UFlatSink(int iters, int arg) {
 
   // Pick file to process based on "arg"
   CHECK_GE(arg, 0);
-  CHECK_LT(arg, ARRAYSIZE(files));
+  CHECK_LT(static_cast<size_t>(arg), ARRAYSIZE(files));
   string contents = ReadTestDataFile(files[arg].filename,
                                      files[arg].size_limit);
 
@@ -1362,7 +1362,7 @@ static void BM_ZFlat(int iters, int arg) {
 
   // Pick file to process based on "arg"
   CHECK_GE(arg, 0);
-  CHECK_LT(arg, ARRAYSIZE(files));
+  CHECK_LT(static_cast<size_t>(arg), ARRAYSIZE(files));
   string contents = ReadTestDataFile(files[arg].filename,
                                      files[arg].size_limit);
 

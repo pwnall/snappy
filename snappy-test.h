@@ -122,6 +122,8 @@ namespace file {
 
   DummyStatus GetContents(
       const std::string& filename, std::string* data, int unused) {
+    (void)unused;  // Avoid unused parameter warning.
+
     FILE* fp = fopen(filename.c_str(), "rb");
     if (fp == NULL) {
       perror(filename.c_str());
@@ -146,6 +148,8 @@ namespace file {
 
   inline DummyStatus SetContents(
       const std::string& filename, const std::string& str, int unused) {
+    (void)unused;  // Avoid unused parameter warning.
+
     FILE* fp = fopen(filename.c_str(), "wb");
     if (fp == NULL) {
       perror(filename.c_str());
