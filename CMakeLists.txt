@@ -1,3 +1,7 @@
+# Copyright 2017 The Snappy Authors. All rights reserved.
+# Use of this source code is governed by a BSD-style license that can be
+# found in the COPYING file. See the AUTHORS file for names of contributors.
+
 cmake_minimum_required(VERSION 3.1)
 project(Snappy VERSION 1.1.7 LANGUAGES C CXX)
 

@@ -14,13 +14,19 @@ os:
   - osx
 
 env:
-  - BUILD_TYPE=Debug
-  - BUILD_TYPE=RelWithDebInfo
+  - BUILD_SYSTEM=cmake BUILD_TYPE=Debug
+  - BUILD_SYSTEM=cmake BUILD_TYPE=RelWithDebInfo
+  - BUILD_SYSTEM=bazel BUILD_TYPE=RelWithDebInfo
 
 matrix:
   allow_failures:
     - compiler: clang
       env: BUILD_TYPE=RelWithDebInfo
+
+  # TODO(pwnall): Remove when done iterating.
+  exclude:
+    - env: BUILD_SYSTEM=cmake BUILD_TYPE=Debug
+    - env: BUILD_SYSTEM=cmake BUILD_TYPE=RelWithDebInfo
 
 addons:
   apt:
@@ -33,9 +39,23 @@ addons:
     - llvm-toolchain-trusty-4.0
     packages:
     - cmake
-    - gcc-6
-    - g++-6
+    - gcc-7
+    - g++-7
     - clang-4.0
+    # Bazel installer dependencies.
+    - pkg-config
+    - python
+    - unzip
+    - wget
+    - zip
+    - zlib1g-dev
+
+before_install:
+- if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      wget https://github.com/bazelbuild/bazel/releases/download/0.7.0/bazel-0.7.0-installer-linux-x86_64.sh;
+      chmod +x bazel-0.7.0-installer-linux-x86_64.sh;
+      export PATH="$PATH:$HOME/bin";
+  fi
 
 install:
 # Travis doesn't have a DSL for installing homebrew packages yet. Status tracked
@@ -46,21 +66,28 @@ install:
 # removing the link emerged as a workaround.
 - if [ "$TRAVIS_OS_NAME" == "osx" ]; then
     brew update;
-    if [ -L /usr/local/include/c++ ]; then rm /usr/local/include/c++; fi;
-    brew install gcc@6;
+    if [ -L /usr/local/include/c++ ]; then rm /usr/local/include/c++;
+    brew install bazel gcc@7;
+  fi
+- if [ "$TRAVIS_OS_NAME" = "linux" ]; then
+      ./bazel-0.7.0-installer-linux-x86_64.sh --user;
   fi
 # /usr/bin/gcc is stuck to old versions by on both Linux and OSX.
-- if [ "$CXX" = "g++" ]; then export CXX="g++-6" CC="gcc-6"; fi
+- if [ "$CXX" = "g++" ]; then export CXX="g++-7" CC="gcc-7"; fi
 - echo ${CC}
 - echo ${CXX}
 - ${CXX} --version
 - cmake --version
 
 before_script:
-- mkdir -p build && cd build
-- cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE
-- cmake --build .
-- cd ..
+- if [ "$BUILD_SYSTEM" = "cmake" ]; then mkdir -p build && cd build; fi
+- if [ "$BUILD_SYSTEM" = "cmake" ]; then
+      cmake .. -DCMAKE_BUILD_TYPE=$BUILD_TYPE; fi
+- if [ "$BUILD_SYSTEM" = "cmake" ]; then cmake --build .; fi
+- if [ "$BUILD_SYSTEM" = "cmake" ]; then cd ..; fi
+- if [ "$BUILD_SYSTEM" = "bazel" ]; then bazel --batch build -c opt //... ; fi
 
 script:
-- build/snappy_unittest
+- if [ "$BUILD_SYSTEM" = "cmake" ]; then build/snappy_unittest; fi
+- if [ "$BUILD_SYSTEM" = "bazel" ]; then
+      bazel --batch test -c opt --test_output streamed //... ; fi

@@ -8,12 +8,18 @@ environment:
   matrix:
     # AppVeyor currently has no custom job name feature.
     # http://help.appveyor.com/discussions/questions/1623-can-i-provide-a-friendly-name-for-jobs
-    - JOB: Visual Studio 2017
+    - JOB: CMake Visual Studio 2017
+      BUILD_SYSTEM: cmake
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
       CMAKE_GENERATOR: Visual Studio 15 2017
-    - JOB: Visual Studio 2015
+    - JOB: CMake Visual Studio 2015
+      BUILD_SYSTEM: cmake
       APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2015
       CMAKE_GENERATOR: Visual Studio 14 2015
+    - JOB: Bazel Visual Studio 2017
+      APPVEYOR_BUILD_WORKER_IMAGE: Visual Studio 2017
+      BUILD_SYSTEM: bazel
+      CMAKE_GENERATOR: _
 
 platform:
   - x86
@@ -23,19 +29,35 @@ configuration:
   - RelWithDebInfo
   - Debug
 
+matrix:
+  exclude:
+  - BUILD_SYSTEM: cmake  # TODO(pwnall): Remove when done iterating.
+  - configuration: Debug
+    BUILD_SYSTEM: bazel
+  - platform: x86
+    BUILD_SYSTEM: bazel
+
+install:
+  - appveyor DownloadFile https://github.com/bazelbuild/bazel/releases/download/0.7.0/bazel-0.7.0-windows-x86_64.exe -FileName bazel.exe
+
 build:
   verbosity: minimal
 
 build_script:
   - git submodule update --init --recursive
-  - mkdir out
-  - cd out
-  - if "%platform%"=="x64" set CMAKE_GENERATOR=%CMAKE_GENERATOR% Win64
-  - cmake --version
-  - cmake .. -G "%CMAKE_GENERATOR%"
-      -DCMAKE_CONFIGURATION_TYPES="%CONFIGURATION%"
-  - cmake --build . --config %CONFIGURATION%
-  - cd ..
+
+  - if "%BUILD_SYSTEM%"=="cmake" ( mkdir build )
+  - if "%BUILD_SYSTEM%"=="cmake" ( cd build )
+  - if "%platform%"=="x64" ( set CMAKE_GENERATOR=%CMAKE_GENERATOR% Win64 )
+  - if "%BUILD_SYSTEM%"=="cmake" ( cmake --version )
+  - if "%BUILD_SYSTEM%"=="cmake" ( cmake .. -G "%CMAKE_GENERATOR%"
+        -DCMAKE_CONFIGURATION_TYPES="%CONFIGURATION%" )
+  - if "%BUILD_SYSTEM%"=="cmake" ( cmake --build . --config %CONFIGURATION% )
+  - if "%BUILD_SYSTEM%"=="cmake" ( cd .. )
+
+  - if "%BUILD_SYSTEM%"=="bazel" ( bazel --batch build -c opt //... )
 
 test_script:
-  - out\%CONFIGURATION%\snappy_unittest
+  - if "%BUILD_SYSTEM%"=="cmake" ( out\%CONFIGURATION%\snappy_unittest )
+  - if "%BUILD_SYSTEM%"=="bazel" ( bazel --batch test -c opt
+      --test_output streamed //... )
